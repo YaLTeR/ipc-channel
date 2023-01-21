@@ -259,6 +259,8 @@ impl OsIpcSender {
         // which in a fragmented send will be smaller than the total message length.
         fn send_first_fragment(sender_fd: c_int, fds: &[c_int], data_buffer: &[u8], len: usize)
                                -> Result<(),UnixError> {
+            let len: u32 = len.try_into().unwrap();
+
             let result = unsafe {
                 let cmsg_length = mem::size_of_val(fds);
                 let (cmsg_buffer, cmsg_space) = if cmsg_length > 0 {
@@ -913,7 +915,7 @@ fn recv(fd: c_int, blocking_mode: BlockingMode)
     //
     // We use this to determine whether we already got the entire message,
     // or need to receive additional fragments -- and if so, how much.
-    let mut total_size = 0usize;
+    let mut total_size = 0u32;
     let mut main_data_buffer;
     unsafe {
         // Allocate a buffer without initialising the memory.
@@ -951,6 +953,8 @@ fn recv(fd: c_int, blocking_mode: BlockingMode)
             shared_memory_regions.push(OsIpcSharedMemory::from_fd(fd));
         }
     }
+
+    let total_size: usize = total_size.try_into().unwrap();
 
     if total_size == main_data_buffer.len() {
         // Fast path: no fragments.
